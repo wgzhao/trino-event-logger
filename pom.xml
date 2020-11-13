@@ -1,18 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.cxzq.ds</groupId>
     <artifactId>presto-event-logger</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>1.0.0</version>
 
     <scm>
         <connection>scm:git:https://gitlab.ds.cfzq.com/grp_ds/presto-event-logger.git</connection>
         <developerConnection>scm:git:git@gitlab.ds.cfzq.com:grp_ds/presto-event-logger.git</developerConnection>
         <url>https://gitlab.ds.cfzq.com/grp_ds/presto-event-logger</url>
-        <tag>HEAD</tag>
+        <tag>presto-event-logger-1.0.0</tag>
     </scm>
 
     <properties>
