@@ -4,13 +4,13 @@
 
     <groupId>com.cxzq.ds</groupId>
     <artifactId>presto-event-logger</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
 
     <scm>
         <connection>scm:git:https://gitlab.ds.cfzq.com/grp_ds/presto-event-logger.git</connection>
         <developerConnection>scm:git:git@gitlab.ds.cfzq.com:grp_ds/presto-event-logger.git</developerConnection>
         <url>https://gitlab.ds.cfzq.com/grp_ds/presto-event-logger</url>
-        <tag>presto-event-logger-1.0.0</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <properties>
