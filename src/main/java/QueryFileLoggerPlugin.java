@@ -5,7 +5,6 @@ import io.prestosql.spi.eventlistener.EventListenerFactory;
 /**
  *
  * @author zhaowg
- * @date 2020-11-13
  */
 public class QueryFileLoggerPlugin
         implements Plugin

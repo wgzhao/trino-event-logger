@@ -17,7 +17,6 @@ import static java.time.format.DateTimeFormatter.BASIC_ISO_DATE;
 
 /**
  * @author zhaowg
- * @date 2020-11-13
  */
 public class QueryFileLoggerEventListener
         implements EventListener
@@ -27,7 +26,7 @@ public class QueryFileLoggerEventListener
 
     public QueryFileLoggerEventListener(Map<String, String> config)
     {
-        String jdbcUrl = config.get("jdbc-url") + "?timeout=5";
+        String jdbcUrl = config.get("jdbc-url");
         tableName = config.get("jdbc-table");
         String username = config.getOrDefault("jdbc-username", "default");
         String password = config.getOrDefault("jdbc-password", null);

@@ -6,7 +6,6 @@ import java.util.Map;
 /**
  *
  * @author zhaowg
- * @date 2020-11-13
  */
 public class QueryFileLoggerEventListenerFactory implements
 	EventListenerFactory {
