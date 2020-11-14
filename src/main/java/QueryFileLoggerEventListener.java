@@ -6,6 +6,7 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
+import java.sql.Statement;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
@@ -24,22 +25,57 @@ public class QueryFileLoggerEventListener
     private final String tableName;
     private Connection connection;
 
+    /**
+     * check table is exists or not
+     *
+     * @return True if exists, otherwise False
+     */
+    private boolean checkTable(Statement statement)
+    {
+        boolean isExists = false;
+        try {
+            if (statement.execute("select 1 from " + tableName)) {
+                isExists = true;
+            }
+        }
+        catch (SQLException ignore) {
+            //ignore
+        }
+        return isExists;
+    }
+
+    private void createTable(Statement statement)
+            throws SQLException
+    {
+        String sql = " CREATE TABLE " + tableName + " (`query_id` String, `query_state` String, `query_user` String, `query_source` String, " +
+                "`query_sql` String, `query_start` String, `query_end` String, `query_error_type` Nullable(String), `query_error_code` Nullable(String), " +
+                "`logdate` String) ENGINE = MergeTree() PARTITION BY logdate ORDER BY query_id SETTINGS index_granularity = 8192";
+        statement.execute(sql);
+    }
+
     public QueryFileLoggerEventListener(Map<String, String> config)
     {
         String jdbcUrl = config.get("jdbc-url");
-        tableName = config.get("jdbc-table");
+        tableName = config.getOrDefault("jdbc-table", "presto_query_log");
         String username = config.getOrDefault("jdbc-username", "default");
         String password = config.getOrDefault("jdbc-password", null);
         try {
+            if (jdbcUrl.startsWith("jdbc://clickhouse")) {
+                Class.forName("ru.yandex.clickhouse.ClickHouseDriver");
+            }
             connection = DriverManager.getConnection(jdbcUrl, username, password);
+            Statement statement = connection.createStatement();
+            if (!checkTable(statement)) {
+                createTable(statement);
+            }
         }
-        catch (SQLException e) {
+        catch (SQLException | ClassNotFoundException e) {
             e.printStackTrace();
         }
-	}
+    }
 
     @Override
-	public void queryCompleted(QueryCompletedEvent queryCompletedEvent)
+    public void queryCompleted(QueryCompletedEvent queryCompletedEvent)
     {
         String querySQL = queryCompletedEvent.getMetadata().getQuery();
         // filter
@@ -48,8 +84,7 @@ public class QueryFileLoggerEventListener
                 || querySQL.startsWith("EXECUTE statement")
                 || querySQL.startsWith("DEALLOCATE PREPARE")
                 || querySQL.startsWith("ROLLBACK")
-        )
-        {
+        ) {
             return;
         }
         List<String> insertVals = new ArrayList<>(8);
@@ -68,7 +103,8 @@ public class QueryFileLoggerEventListener
         if (failureInfo.isPresent()) {
             insertVals.add(failureInfo.get().getFailureType().orElse(""));
             insertVals.add(String.valueOf(failureInfo.get().getErrorCode().getCode()));
-        } else {
+        }
+        else {
             insertVals.add(null);
             insertVals.add(null);
         }
@@ -78,12 +114,12 @@ public class QueryFileLoggerEventListener
                 + "(query_id, query_state, query_user, query_source, query_sql, "
                 + "query_start, query_end, query_error_type, query_error_code, "
                 + " logdate) values(?,?,?,?,?,?,?,?,?,?)";
-        try (PreparedStatement preparement = connection.prepareStatement(insertSQL)) {
-            preparement.setQueryTimeout(2);
+        try (PreparedStatement preparedStatement = connection.prepareStatement(insertSQL)) {
+            preparedStatement.setQueryTimeout(2);
             for (int i = 1; i <= insertVals.size(); i++) {
-                preparement.setString(i, insertVals.get(i - 1));
+                preparedStatement.setString(i, insertVals.get(i - 1));
             }
-            preparement.executeUpdate();
+            preparedStatement.executeUpdate();
         }
         catch (SQLException e) {
             e.printStackTrace();
