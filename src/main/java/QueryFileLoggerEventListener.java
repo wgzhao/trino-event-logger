@@ -21,8 +21,11 @@ import java.util.StringJoiner;
  */
 public class QueryFileLoggerEventListener
         implements EventListener {
+
     private final String tableName;
+
     private Connection connection;
+
     private static final List<String[]> columns = new ArrayList<>();
 
     static {
@@ -91,6 +94,7 @@ public class QueryFileLoggerEventListener
 
     @Override
     public void queryCompleted(QueryCompletedEvent queryCompletedEvent) {
+        String datetimePattern = "yyyy-MM-dd HH:mm:ss";
         String querySQL = queryCompletedEvent.getMetadata().getQuery();
         // filter
         if (querySQL.startsWith("SELECT TABLE_CAT, TABLE_SCHEM")
@@ -114,10 +118,11 @@ public class QueryFileLoggerEventListener
         insertVals.add(querySQL);
         // query started time
         ZonedDateTime startTime = queryCompletedEvent.getCreateTime().atZone(ZoneId.of("Asia/Chongqing"));
-        insertVals.add(startTime.toLocalDateTime().format(DateTimeFormatter.ISO_DATE_TIME));
+
+        insertVals.add(startTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
         // query end time
         ZonedDateTime endTime = queryCompletedEvent.getEndTime().atZone(ZoneId.of("Asia/Chongqing"));
-        insertVals.add(endTime.toLocalDateTime().format(DateTimeFormatter.ISO_DATE_TIME));
+        insertVals.add(endTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
         // wall times
         long wallTime = queryCompletedEvent.getStatistics().getWallTime().toSeconds();
         insertVals.add(wallTime);
