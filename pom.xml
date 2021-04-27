@@ -14,7 +14,7 @@
     </scm>
 
     <properties>
-        <presto.version>345</presto.version>
+        <presto.version>348</presto.version>
         <project.build.targetJdk>11</project.build.targetJdk>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
