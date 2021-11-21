@@ -1,99 +1,96 @@
-import io.prestosql.spi.eventlistener.EventListener;
-import io.prestosql.spi.eventlistener.QueryCompletedEvent;
-import io.prestosql.spi.eventlistener.QueryFailureInfo;
+/*
+ *  Licensed to the Apache Software Foundation (ASF) under one
+ *  or more contributor license agreements.  See the NOTICE file
+ *  distributed with this work for additional information
+ *  regarding copyright ownership.  The ASF licenses this file
+ *  to you under the Apache License, Version 2.0 (the
+ *  "License"); you may not use this file except in compliance
+ *  with the License.  You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ *  Unless required by applicable law or agreed to in writing,
+ *  software distributed under the License is distributed on an
+ *  "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ *  KIND, either express or implied.  See the License for the
+ *  specific language governing permissions and limitations
+ *  under the License.
+ *
+ */
 
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.PreparedStatement;
-import java.sql.SQLException;
-import java.sql.Statement;
+import io.trino.spi.eventlistener.EventListener;
+import io.trino.spi.eventlistener.QueryCompletedEvent;
+import io.trino.spi.eventlistener.QueryFailureInfo;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.StringJoiner;
+import java.util.logging.Logger;
 
-/**
- * @author zhaowg
- */
 public class QueryFileLoggerEventListener
-        implements EventListener {
+        implements EventListener
+{
 
-    private final String tableName;
+    private final String[] header = {"query_id", "query_state", "query_user",
+            "query_source", "query_sql", "query_start", "query_end", "wall_time",
+            "queue_time", "cpu_time", "peak_memory_bytes", "query_error_type", "query_error_code"};
 
-    private Connection connection;
+    private static final Logger logger = Logger.getLogger(QueryFileLoggerEventListener.class.getName());
+    private FileWriter fileWriter;
+//    private OutputStream outputStream;
+    // the column separator symbol
+    private final String separator;
+    private final String logDir;
+    private final String logFile;
+    private final boolean hasHeader;
+    private final long fileSize;
+    private long currSize = 0;
+    private String filePath;
 
-    private static final List<String[]> columns = new ArrayList<>();
+    public QueryFileLoggerEventListener(Map<String, String> config)
 
-    static {
-        columns.add(new String[]{"query_id", "String"});
-        columns.add(new String[]{"query_state", "String"});
-        columns.add(new String[]{"query_user", "String"});
-        columns.add(new String[]{"query_source", "String"});
-        columns.add(new String[]{"query_sql", "String"});
-        columns.add(new String[]{"query_start", "DateTime"});
-        columns.add(new String[]{"query_end", "DateTime"});
-        columns.add(new String[]{"wall_time", "Int32"});
-        columns.add(new String[]{"queue_time", "Int32"});
-        columns.add(new String[]{"cpu_time", "Int32"});
-        columns.add(new String[]{"peak_memory_bytes", "Int64"});
-        columns.add(new String[]{"query_error_type", "Nullable(String)"});
-        columns.add(new String[]{"query_error_code", "Nullable(String)"});
-        columns.add(new String[]{"logdate", "Int32"});
-
-    }
-
-    /**
-     * check table is exists or not
-     *
-     * @return True if exists, otherwise False
-     */
-    private boolean checkTable(Statement statement) {
-        boolean isExists = false;
+    {
+        // the directory events are written to
+        this.logDir = config.getOrDefault("log-dir", "/var/log/trino/");
+        // the file name prefix
+        this.logFile = config.getOrDefault("log-file", "query.log");
+        this.separator = config.getOrDefault("separator", ",");
+        // write the column name or not
+        this.hasHeader = Boolean.parseBoolean(config.getOrDefault("header", "true"));
+        // the max size before rotate
+        this.fileSize = Long.parseLong(config.getOrDefault("max-file-size", "104857600"));
+        this.filePath = Path.of(this.logDir, this.logFile).toString();
         try {
-            if (statement.execute("select 1 from " + tableName)) {
-                isExists = true;
+//            this.outputStream = new FileOutputStream(this.logDir +  "/" + this.logFile, true);
+            fileWriter = new FileWriter(this.filePath, true);
+            if (hasHeader) {
+                fileWriter.write(String.join(separator, header) + "\n");
+//                outputStream.write((String.join(separator, header) + "\n").getBytes(StandardCharsets.UTF_8));
+                currSize += String.join(separator, header).getBytes(StandardCharsets.UTF_8).length;
             }
-        } catch (SQLException ignore) {
-            //ignore
         }
-        return isExists;
-    }
+        catch (IOException e) {
+           logger.warning("Failed to create file writer" + e);
+        }
 
-    private void createTable(Statement statement)
-            throws SQLException {
-        final StringJoiner stringJoiner = new StringJoiner(",");
-        for (String[] item : columns) {
-            stringJoiner.add(item[0] + " " + item[1]);
-        }
-        String sql = String.format(" CREATE TABLE %s  ( %s ) ENGINE = MergeTree() PARTITION BY logdate ORDER BY query_id SETTINGS index_granularity = 8192", tableName, stringJoiner);
-        statement.execute(sql);
-    }
-
-    public QueryFileLoggerEventListener(Map<String, String> config) {
-        String jdbcUrl = config.get("jdbc-url");
-        tableName = config.getOrDefault("jdbc-table", "presto_query_log");
-        String username = config.getOrDefault("jdbc-username", "default");
-        String password = config.getOrDefault("jdbc-password", null);
-        try {
-            if (jdbcUrl.startsWith("jdbc://clickhouse")) {
-                Class.forName("ru.yandex.clickhouse.ClickHouseDriver");
-            }
-            connection = DriverManager.getConnection(jdbcUrl, username, password);
-            Statement statement = connection.createStatement();
-            if (!checkTable(statement)) {
-                createTable(statement);
-            }
-        } catch (SQLException | ClassNotFoundException e) {
-            e.printStackTrace();
-        }
     }
 
     @Override
-    public void queryCompleted(QueryCompletedEvent queryCompletedEvent) {
+    public void queryCompleted(QueryCompletedEvent queryCompletedEvent)
+    {
+        int fileCount = 0;
         String datetimePattern = "yyyy-MM-dd HH:mm:ss";
         String querySQL = queryCompletedEvent.getMetadata().getQuery();
         // filter
@@ -105,63 +102,80 @@ public class QueryFileLoggerEventListener
         ) {
             return;
         }
-        List<Object> insertVals = new ArrayList<>(16);
-        // quyer id
-        insertVals.add(queryCompletedEvent.getMetadata().getQueryId());
+        StringJoiner sj = new StringJoiner(separator);
+        // query id
+        sj.add(queryCompletedEvent.getMetadata().getQueryId());
         // query state
-        insertVals.add(queryCompletedEvent.getMetadata().getQueryState());
+        sj.add(queryCompletedEvent.getMetadata().getQueryState());
         // query user
-        insertVals.add(queryCompletedEvent.getContext().getUser());
+        sj.add(queryCompletedEvent.getContext().getUser());
         // query source
-        insertVals.add(queryCompletedEvent.getContext().getSource().orElse(""));
+        sj.add(queryCompletedEvent.getContext().getSource().orElse(""));
         // query sql
-        insertVals.add(querySQL);
+        sj.add(querySQL);
         // query started time
         ZonedDateTime startTime = queryCompletedEvent.getCreateTime().atZone(ZoneId.of("Asia/Chongqing"));
 
-        insertVals.add(startTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
+        sj.add(startTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
         // query end time
         ZonedDateTime endTime = queryCompletedEvent.getEndTime().atZone(ZoneId.of("Asia/Chongqing"));
-        insertVals.add(endTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
+        sj.add(endTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
         // wall times
         long wallTime = queryCompletedEvent.getStatistics().getWallTime().toSeconds();
-        insertVals.add(wallTime);
+        sj.add(String.valueOf(wallTime));
         // queued times
         long queueTime = queryCompletedEvent.getStatistics().getQueuedTime().toSeconds();
-        insertVals.add(queueTime);
+        sj.add(String.valueOf(queueTime));
         // CPU times
         long cpuTime = queryCompletedEvent.getStatistics().getCpuTime().toSeconds();
-        insertVals.add(cpuTime);
+        sj.add(String.valueOf(cpuTime));
         // peak memory bytes
         long peakMemoryBytes = queryCompletedEvent.getStatistics().getPeakUserMemoryBytes();
-        insertVals.add(peakMemoryBytes);
+        sj.add(String.valueOf(peakMemoryBytes));
         Optional<QueryFailureInfo> failureInfo = queryCompletedEvent.getFailureInfo();
         // query error type and query error code
         if (failureInfo.isPresent()) {
-            insertVals.add(failureInfo.get().getFailureType().orElse(""));
-            insertVals.add(String.valueOf(failureInfo.get().getErrorCode().getCode()));
-        } else {
-            insertVals.add(null);
-            insertVals.add(null);
+            sj.add(failureInfo.get().getFailureType().orElse(""));
+            sj.add(String.valueOf(failureInfo.get().getErrorCode().getCode()));
         }
-        // logdate
-        insertVals.add(Integer.parseInt(java.time.LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"))));
-        StringJoiner insertSQL = new StringJoiner(",");
-        StringJoiner parameters = new StringJoiner(",");
-        for (String[] item: columns) {
-            insertSQL.add(item[0]);
-            parameters.add("?");
+        else {
+            sj.add("");
+            sj.add("");
         }
-        String sql = "INSERT INTO " + tableName + " (" + insertSQL + ") VALUES (" + parameters + ")";
-        try (PreparedStatement preparedStatement = connection.prepareStatement(sql)) {
-            preparedStatement.setQueryTimeout(2);
-            for (int i = 1; i <= insertVals.size(); i++) {
-                preparedStatement.setObject(i, insertVals.get(i - 1));
+
+        try {
+            logger.info(sj.toString());
+            final byte[] bytes = sj.toString().getBytes(StandardCharsets.UTF_8);
+//            outputStream.write(bytes);
+            fileWriter.write(sj + "\n");
+            fileWriter.flush();
+            currSize += bytes.length;
+            if (currSize >= fileSize) {
+                // rotate
+                fileWriter.flush();
+                fileWriter.close();
+                // rename current file to new filename
+                File oldFile = new File(filePath);
+
+                File newFile = new File(filePath + "-" + fileCount);
+                fileCount++;
+                if (! oldFile.renameTo(newFile)) {
+                    logger.info("Failed to rename file " + oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
+                }
+
+                // reopen log file
+                fileWriter = new FileWriter(filePath, true);
+//                outputStream = new FileOutputStream(logDir + "/" + logFile, true);
+                if (hasHeader) {
+                    fileWriter.write(String.join(separator, header) + "\n");
+                    fileWriter.flush();
+                }
+                // clean size
+                currSize = 0;
             }
-            preparedStatement.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            System.out.println(sql);
+        }
+        catch (IOException e) {
+            logger.warning("Failed to write to file " + filePath + ": " + e);
         }
     }
 }
