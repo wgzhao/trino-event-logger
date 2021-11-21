@@ -49,35 +49,31 @@ public class QueryFileLoggerEventListener
 
     private static final Logger logger = Logger.getLogger(QueryFileLoggerEventListener.class.getName());
     private FileWriter fileWriter;
-//    private OutputStream outputStream;
     // the column separator symbol
     private final String separator;
-    private final String logDir;
-    private final String logFile;
     private final boolean hasHeader;
     private final long fileSize;
     private long currSize = 0;
-    private String filePath;
+    private final String filePath;
+    private static long fileCount = 0;
 
     public QueryFileLoggerEventListener(Map<String, String> config)
 
     {
         // the directory events are written to
-        this.logDir = config.getOrDefault("log-dir", "/var/log/trino/");
+        String logDir = config.getOrDefault("log-dir", "/var/log/trino/");
         // the file name prefix
-        this.logFile = config.getOrDefault("log-file", "query.log");
-        this.separator = config.getOrDefault("separator", ",");
+        String logFile = config.getOrDefault("log-file", "query.log");
+        this.separator = config.getOrDefault("separator", "|");
         // write the column name or not
         this.hasHeader = Boolean.parseBoolean(config.getOrDefault("header", "true"));
         // the max size before rotate
         this.fileSize = Long.parseLong(config.getOrDefault("max-file-size", "104857600"));
-        this.filePath = Path.of(this.logDir, this.logFile).toString();
+        this.filePath = Path.of(logDir, logFile).toString();
         try {
-//            this.outputStream = new FileOutputStream(this.logDir +  "/" + this.logFile, true);
             fileWriter = new FileWriter(this.filePath, true);
             if (hasHeader) {
                 fileWriter.write(String.join(separator, header) + "\n");
-//                outputStream.write((String.join(separator, header) + "\n").getBytes(StandardCharsets.UTF_8));
                 currSize += String.join(separator, header).getBytes(StandardCharsets.UTF_8).length;
             }
         }
@@ -90,7 +86,6 @@ public class QueryFileLoggerEventListener
     @Override
     public void queryCompleted(QueryCompletedEvent queryCompletedEvent)
     {
-        int fileCount = 0;
         String datetimePattern = "yyyy-MM-dd HH:mm:ss";
         String querySQL = queryCompletedEvent.getMetadata().getQuery();
         // filter
@@ -144,9 +139,7 @@ public class QueryFileLoggerEventListener
         }
 
         try {
-            logger.info(sj.toString());
             final byte[] bytes = sj.toString().getBytes(StandardCharsets.UTF_8);
-//            outputStream.write(bytes);
             fileWriter.write(sj + "\n");
             fileWriter.flush();
             currSize += bytes.length;
@@ -156,16 +149,14 @@ public class QueryFileLoggerEventListener
                 fileWriter.close();
                 // rename current file to new filename
                 File oldFile = new File(filePath);
-
                 File newFile = new File(filePath + "-" + fileCount);
-                fileCount++;
+                ++fileCount;
                 if (! oldFile.renameTo(newFile)) {
                     logger.info("Failed to rename file " + oldFile.getAbsolutePath() + " to " + newFile.getAbsolutePath());
                 }
 
                 // reopen log file
                 fileWriter = new FileWriter(filePath, true);
-//                outputStream = new FileOutputStream(logDir + "/" + logFile, true);
                 if (hasHeader) {
                     fileWriter.write(String.join(separator, header) + "\n");
                     fileWriter.flush();
