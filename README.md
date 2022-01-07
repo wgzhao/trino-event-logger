@@ -30,10 +30,10 @@ mvn clean package assembly:assembly
 
 ### 配置
 
-在 coordinator 节点上的执行下面的命令，将会在配置目录下(`/etc/trino`) 创建一个名为 `event-logger.properties` 的文件
+在 coordinator 节点上的执行下面的命令，将会在配置目录下(`/etc/trino`) 创建一个名为 `event-listener.properties` 的文件
 
  ```shell
- trino config --plugin-config event-logger.properties
+touch /etc/trino/event-listener.properties
  ```
 
 编辑该文件，配置以下内容
