@@ -99,22 +99,22 @@ public class QueryFileLoggerEventListener
         }
         StringJoiner sj = new StringJoiner(separator);
         // query id
-        sj.add(queryCompletedEvent.getMetadata().getQueryId());
+        sj.add("\"" + queryCompletedEvent.getMetadata().getQueryId() + "\"");
         // query state
-        sj.add(queryCompletedEvent.getMetadata().getQueryState());
+        sj.add("\"" + queryCompletedEvent.getMetadata().getQueryState() + "\"");
         // query user
-        sj.add(queryCompletedEvent.getContext().getUser());
+        sj.add("\"" + queryCompletedEvent.getContext().getUser()+ "\"");
         // query source
-        sj.add(queryCompletedEvent.getContext().getSource().orElse(""));
+        sj.add("\"" + queryCompletedEvent.getContext().getSource().orElse("")+ "\"");
         // query sql
-        sj.add(querySQL);
+        sj.add("\"" + querySQL + "\"");
         // query started time
         ZonedDateTime startTime = queryCompletedEvent.getCreateTime().atZone(ZoneId.of("Asia/Chongqing"));
 
-        sj.add(startTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
+        sj.add("\"" + startTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)) + "\"");
         // query end time
         ZonedDateTime endTime = queryCompletedEvent.getEndTime().atZone(ZoneId.of("Asia/Chongqing"));
-        sj.add(endTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)));
+        sj.add("\"" + endTime.toLocalDateTime().format(DateTimeFormatter.ofPattern(datetimePattern)) + "\"");
         // wall times
         long wallTime = queryCompletedEvent.getStatistics().getWallTime().toSeconds();
         sj.add(String.valueOf(wallTime));
@@ -130,7 +130,7 @@ public class QueryFileLoggerEventListener
         Optional<QueryFailureInfo> failureInfo = queryCompletedEvent.getFailureInfo();
         // query error type and query error code
         if (failureInfo.isPresent()) {
-            sj.add(failureInfo.get().getFailureType().orElse(""));
+            sj.add("\"" + failureInfo.get().getFailureType().orElse("") + "\"");
             sj.add(String.valueOf(failureInfo.get().getErrorCode().getCode()));
         }
         else {
