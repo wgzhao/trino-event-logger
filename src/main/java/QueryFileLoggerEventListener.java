@@ -1,6 +1,6 @@
-import io.prestosql.spi.eventlistener.EventListener;
-import io.prestosql.spi.eventlistener.QueryCompletedEvent;
-import io.prestosql.spi.eventlistener.QueryFailureInfo;
+import io.trino.spi.eventlistener.EventListener;
+import io.trino.spi.eventlistener.QueryCompletedEvent;
+import io.trino.spi.eventlistener.QueryFailureInfo;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

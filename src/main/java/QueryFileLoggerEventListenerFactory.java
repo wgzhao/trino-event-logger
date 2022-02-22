@@ -1,5 +1,5 @@
-import io.prestosql.spi.eventlistener.EventListener;
-import io.prestosql.spi.eventlistener.EventListenerFactory;
+import io.trino.spi.eventlistener.EventListener;
+import io.trino.spi.eventlistener.EventListenerFactory;
 
 import java.util.Map;
 
