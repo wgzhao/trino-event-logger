@@ -33,6 +33,7 @@ public class QueryFileLoggerEventListener
         columns.add(new String[]{"query_state", "String"});
         columns.add(new String[]{"query_user", "String"});
         columns.add(new String[]{"query_source", "String"});
+        columns.add(new String[]{"query_ip", "String"});
         columns.add(new String[]{"query_sql", "String"});
         columns.add(new String[]{"query_start", "DateTime"});
         columns.add(new String[]{"query_end", "DateTime"});
@@ -114,6 +115,8 @@ public class QueryFileLoggerEventListener
         insertVals.add(queryCompletedEvent.getContext().getUser());
         // query source
         insertVals.add(queryCompletedEvent.getContext().getSource().orElse(""));
+        // query ip
+        insertVals.add(queryCompletedEvent.getContext().getRemoteClientAddress().orElse(""));
         // query sql
         insertVals.add(querySQL);
         // query started time
