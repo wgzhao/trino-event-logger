@@ -34,7 +34,7 @@
     </scm>
 
     <properties>
-        <trino.version>360</trino.version>
+        <trino.version>381</trino.version>
         <project.build.targetJdk>11</project.build.targetJdk>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
